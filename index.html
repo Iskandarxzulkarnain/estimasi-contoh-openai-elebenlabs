@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kalkulator Biaya (Logika Final Sesuai Kode)</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&family=Fira+Code:wght@400;500&display=swap');
+        
+        :root {
+            --bg-color: #f4f7f9;
+            --pane-bg: #ffffff;
+            --text-color: #333;
+            --header-color: #2c3e50;
+            --primary-color: #0056b3; 
+            --secondary-color: #17a2b8;
+            --border-color: #e9ecef;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+        }
+
+        .main-container {
+            display: grid;
+            grid-template-columns: 1fr 1.3fr;
+            gap: 30px;
+            max-width: 1400px;
+            margin: auto;
+        }
+
+        .pane {
+            background-color: var(--pane-bg);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+        }
+
+        h1, h2, h3 { color: var(--header-color); }
+        h1 { text-align: center; grid-column: 1 / -1; margin-bottom: 0; }
+        h2 { border-bottom: 2px solid var(--primary-color); padding-bottom: 10px; margin-top: 0; }
+        
+        /* Style Kalkulator */
+        .input-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .full-width { grid-column: 1 / -1; }
+        .calculator-pane .input-group { margin-bottom: 15px; }
+        .calculator-pane label { font-weight: 600; font-size: 14px; margin-bottom: 8px; display: block; }
+        .calculator-pane input, .calculator-pane select {
+            width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color);
+            font-size: 16px; font-family: 'Poppins', sans-serif; box-sizing: border-box;
+        }
+        .calculator-pane button {
+            width: 100%; padding: 12px; background-color: var(--primary-color); color: white;
+            border: none; border-radius: 8px; font-size: 18px; font-weight: 600; cursor: pointer;
+            transition: background-color 0.3s; margin-top: 10px;
+        }
+        .calculator-pane button:hover { background-color: #004494; }
+        .calculator-pane .result-item { display: flex; justify-content: space-between; padding: 10px 0; font-size: 16px; }
+        .calculator-pane #total-cost span:last-child { color: #28a745; font-size: 20px; font-weight: bold; }
+        
+        /* Style Penjelasan */
+        .explanation-pane h3 { color: var(--primary-color); margin-top: 25px; }
+        .explanation-pane p { line-height: 1.7; }
+        .explanation-pane .calc-block {
+            font-family: 'Fira Code', monospace;
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-size: 14px;
+            border-left: 4px solid var(--primary-color);
+        }
+        .explanation-pane .calc-block h4 {
+             font-family: 'Poppins', sans-serif;
+             margin: 0 0 10px 0;
+             color: var(--primary-color);
+        }
+        .explanation-pane .dynamic-value {
+            font-weight: bold;
+            color: var(--header-color);
+            background: #e9ecef;
+            padding: 2px 5px;
+            border-radius: 4px;
+        }
+        .note { font-style: italic; color: #555; font-size: 13px; }
+    </style>
+</head>
+<body>
+
+    <div class="main-container">
+        <h1>Kalkulator Biaya Lulladreams (Logika Final Revisi)</h1>
+
+        <div class="pane calculator-pane">
+            <h2>Parameter Cerita</h2>
+            <div class="input-grid">
+                <div class="input-group">
+                    <label for="duration">Durasi Cerita (menit)</label>
+                    <input type="number" id="duration" value="3" min="1">
+                </div>
+                 <div class="input-group">
+                    <label for="listener-age">Usia Pendengar</label>
+                    <select id="listener-age">
+                        <option value="1-5">1-5 tahun</option>
+                        <option value="6-9">6-9 tahun</option>
+                        <option value="10+">10+ tahun</option>
+                    </select>
+                </div>
+            </div>
+             <div class="input-group full-width">
+                <label for="additional-prompt-tokens">Estimasi Token Input Tambahan Dari User</label>
+                <input type="number" id="additional-prompt-tokens" value="150" min="0" title="Estimasi token dari semua field JSON seperti main_char, prompt, story_lesson, dll.">
+             </div>
+            <div class="input-group full-width">
+                <label for="exchange-rate">Kurs 1 USD ke IDR</label>
+                <input type="number" id="exchange-rate" value="16503">
+            </div>
+            <button onclick="calculateCost()">Hitung Estimasi Biaya</button>
+            <div id="results" style="margin-top: 20px;">
+                 <div class="result-item"><span>✍️ Maks. Biaya Naskah (OpenAI)</span><span id="openai-cost"></span></div>
+                 <div class="result-item"><span>🎙️ Biaya Audio (ElevenLabs)</span><span id="elevenlabs-cost"></span></div>
+                 <hr>
+                 <div class="result-item" id="total-cost"><span>💰 Total Estimasi Biaya</span><span id="total-cost-value"></span></div>
+            </div>
+        </div>
+
+        <div class="pane explanation-pane">
+            <h2>Detail Perhitungan</h2>
+            <p class="note">Biaya OpenAI dihitung dari **karakter maksimal** output. Biaya ElevenLabs dihitung **per menit**.</p>
+            
+            <h3>🤖 Biaya OpenAI (Pembuatan Naskah)</h3>
+            <p>Biaya ini terdiri dari biaya <strong>Input</strong> (prompt yang dikirim) dan <strong>Output</strong> (cerita yang dihasilkan).</p>
+            <div class="calc-block">
+                <h4>Langkah 1: Hitung Biaya Input</h4>
+                <span>Token Template Tetap: <span class="dynamic-value">395</span></span><br>
+                <span>Token Input Tambahan: <span class="dynamic-value" id="expl_add_tokens">150</span></span><br>
+                <span><strong>Total Input Tokens: <span class="dynamic-value" id="expl_total_input_tokens">545</span></strong></span><br>
+                <span>Biaya Input: (<span class="dynamic-value" id="expl_input_tokens_calc">545</span> / 1000) * $0.0015 = <span class="dynamic-value" id="expl_input_cost">$0.000818</span></span>
+            </div>
+             <div class="calc-block">
+                <h4>Langkah 2: Hitung Biaya Output (dari Karakter Maksimal)</h4>
+                <span>Target WPM (Usia <span class="dynamic-value" id="expl_age_range">1-5</span>): <span class="dynamic-value" id="expl_wpm">80</span></span><br>
+                <span>Karakter Maksimal: <span class="dynamic-value" id="expl_max_chars">1469</span> karakter</span><br>
+                <span><strong>Total Output Tokens: <span class="dynamic-value" id="expl_total_output_tokens">367</span></strong> (dari <span class="dynamic-value" id="expl_max_chars_2">1469</span> / 4)</span><br>
+                <span>Biaya Output: (<span class="dynamic-value" id="expl_output_tokens_calc">367</span> / 1000) * $0.002 = <span class="dynamic-value" id="expl_output_cost">$0.000734</span></span>
+            </div>
+
+            <h3>🎙️ Biaya ElevenLabs (Produksi Suara)</h3>
+            <div class="calc-block">
+                <h4>Perhitungan Langsung per Menit</h4>
+                 <span>Durasi: <span class="dynamic-value" id="expl_duration">3</span> menit</span><br>
+                 <span>Biaya per Menit (Pro Plan): <span class="dynamic-value">$0.198</span></span><br>
+                 <span>Total Biaya: <span class="dynamic-value" id="expl_duration_2">3</span> menit * <span class="dynamic-value">$0.198</span> = <span class="dynamic-value" id="expl_elevenlabs_cost_usd">$0.594</span></span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * Mengkalkulasi estimasi biaya maksimal untuk pembuatan cerita AI.
+         * Revisi ini memperjelas pemisahan kalkulasi input dan output.
+        */
+        function calculateCost() {
+            // --- 1. AMBIL SEMUA INPUT PENGGUNA ---
+            const duration = parseFloat(document.getElementById('duration').value);
+            const exchangeRate = parseFloat(document.getElementById('exchange-rate').value);
+            const listenerAge = document.getElementById('listener-age').value;
+            const additionalPromptTokens = parseFloat(document.getElementById('additional-prompt-tokens').value);
+
+            // Validasi input
+            if (isNaN(duration) || isNaN(exchangeRate) || isNaN(additionalPromptTokens) || duration <= 0) {
+                alert("Harap masukkan semua nilai dengan benar.");
+                return;
+            }
+
+            // --- 2. PERHITUNGAN BIAYA OPENAI ---
+
+            // A. Kalkulasi Biaya INPUT
+            // Total token dari template tetap yang sudah dianalisis sebelumnya.
+            const basePromptTokens = 395; 
+            const totalInputTokens = basePromptTokens + additionalPromptTokens;
+            const costPer1kInputTokensUSD = 0.0015;
+            const inputCostUSD = (totalInputTokens / 1000) * costPer1kInputTokensUSD;
+
+            // B. Kalkulasi Biaya OUTPUT dari Karakter Maksimal
+            let wpm = 100; // default
+            if (listenerAge === '1-5') wpm = 80;
+            if (listenerAge === '10+') wpm = 120;
+
+            const max_words = Math.round((duration * wpm) * 1.2);
+            const max_chars = Math.round(max_words * 5.1);
+            
+            // Estimasi token dari karakter (rata-rata 1 token ≈ 4 karakter)
+            const totalOutputTokens = Math.round(max_chars / 4); 
+
+            const costPer1kOutputTokensUSD = 0.002;
+            const outputCostUSD = (totalOutputTokens / 1000) * costPer1kOutputTokensUSD;
+            
+            // C. Total Biaya OpenAI
+            const openAICostUSD = inputCostUSD + outputCostUSD;
+            const openAICostIDR = openAICostUSD * exchangeRate;
+            
+            // --- 3. PERHITUNGAN BIAYA ELEVENLABS (PER MENIT) ---
+            const elevenlabsCostPerMinuteUSD = 99 / 500; // Untuk Pro Plan
+            const elevenlabsTotalCostUSD = duration * elevenlabsCostPerMinuteUSD;
+            const elevenlabsTotalCostIDR = elevenlabsTotalCostUSD * exchangeRate;
+            
+            // --- 4. TOTAL KESELURUHAN ---
+            const totalCostIDR = openAICostIDR + elevenlabsTotalCostIDR;
+
+            // --- 5. TAMPILKAN HASIL ---
+            const formatIDR = (num) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 2 }).format(num);
+            const formatUSD = (num, digits = 6) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: digits, maximumFractionDigits: digits }).format(num);
+            
+            // Tampilkan di panel kalkulator kiri
+            document.getElementById('openai-cost').textContent = formatIDR(openAICostIDR);
+            document.getElementById('elevenlabs-cost').textContent = formatIDR(elevenlabsTotalCostIDR);
+            document.getElementById('total-cost-value').textContent = formatIDR(totalCostIDR);
+            
+            // Update panel penjelasan kanan
+            // OpenAI - Input
+            document.getElementById('expl_add_tokens').textContent = additionalPromptTokens;
+            document.getElementById('expl_total_input_tokens').textContent = totalInputTokens;
+            document.getElementById('expl_input_tokens_calc').textContent = totalInputTokens;
+            document.getElementById('expl_input_cost').textContent = formatUSD(inputCostUSD);
+            
+            // OpenAI - Output
+            document.getElementById('expl_age_range').textContent = listenerAge;
+            document.getElementById('expl_wpm').textContent = wpm;
+            document.getElementById('expl_max_chars').textContent = max_chars;
+            document.getElementById('expl_max_chars_2').textContent = max_chars;
+            document.getElementById('expl_total_output_tokens').textContent = totalOutputTokens;
+            document.getElementById('expl_output_tokens_calc').textContent = totalOutputTokens;
+            document.getElementById('expl_output_cost').textContent = formatUSD(outputCostUSD);
+            
+            // ElevenLabs
+            document.getElementById('expl_duration').textContent = duration;
+            document.getElementById('expl_duration_2').textContent = duration;
+            document.getElementById('expl_elevenlabs_cost_usd').textContent = formatUSD(elevenlabsTotalCostUSD, 3);
+        }
+        
+        // Atur nilai default dan jalankan saat halaman dimuat
+        document.addEventListener('DOMContentLoaded', (event) => {
+            document.getElementById('listener-age').value = '1-5';
+            calculateCost();
+        });
+    </script>
+</body>
+</html>
